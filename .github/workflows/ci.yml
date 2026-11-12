@@ -1,11 +1,14 @@
-name: lint-prototype
+name: nuggets
 on: [push, pull_request]
 jobs:
-  check:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix: { python: ["3.11", "3.12", "3.13"] }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: python -I tests/check_toml.py tests/fixtures/store/README.md tests/fixtures/store
-      - run: python -I tests/check_store.py tests/fixtures/store
+        with: { python-version: "${{ matrix.python }}" }
+      - run: pip install -q pytest
+      - run: python -m pytest -q
+      - run: python -m nuggets.cli --store tests/fixtures/store lint --warnings

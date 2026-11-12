@@ -1,0 +1,25 @@
+[project]
+name = "nuggets"
+version = "0.1.0"
+description = "Tools for the ALPR citable-fact store: lint, builder, index, query runner"
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-or-later" }
+dependencies = []
+
+[project.optional-dependencies]
+db = ["duckdb>=1.1"]
+pdf = ["pymupdf>=1.24", "openpyxl>=3.1"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+nuggets = "nuggets.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["nuggets"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

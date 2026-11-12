@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: nuggets
+Version: 0.1.0
+Summary: Tools for the ALPR citable-fact store: lint, builder, index, query runner
+License: AGPL-3.0-or-later
+Requires-Python: >=3.11
+License-File: LICENSE
+Provides-Extra: db
+Requires-Dist: duckdb>=1.1; extra == "db"
+Provides-Extra: pdf
+Requires-Dist: pymupdf>=1.24; extra == "pdf"
+Requires-Dist: openpyxl>=3.1; extra == "pdf"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Dynamic: license-file

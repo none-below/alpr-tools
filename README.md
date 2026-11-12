@@ -11,13 +11,15 @@ Rules this repo keeps:
 - **No leads in commits.** Commit messages, issues and PRs describe mechanisms, never findings.
 - **Pins name this repo.** A published number cites `alpr-tools@<commit>` and `query:alpr-tools/<name>@<commit>`.
 
-Today (2026-11-12) it holds the lint prototype: two checkers that validate a store's TOML, re-derive every id from
-its seed, enforce the generated/hand split, the alias rules and the vocabulary. The schema doc for outsiders, with
-synthetic examples, is the next file to write; the working spec stays in the data repo.
+Today (2026-11-12) it holds the `nuggets` package with `lint` (every rule the spec names, as code: ids re-derived
+from their seeds, the generated/hand split, the locator grammar, alias and root rules, the vocabulary, the
+verification gate) and the stubs of `sources add`, `verify`, `grab`, `build` and `query` that slice 1 fills in.
+The schema doc for outsiders, with synthetic examples, is the next file to write; the working spec stays in
+the data repo.
 
 ```
-python -I tests/check_toml.py tests/fixtures/store/README.md tests/fixtures/store
-python -I tests/check_store.py tests/fixtures/store
+python -m pytest -q
+python -m nuggets.cli --store <store dir> lint --warnings
 ```
 
 Python 3.11+ (`tomllib`). License: AGPL-3.0, as the site repo.
