@@ -1,0 +1,38 @@
+id     = "7b035a75-ceb9-536e-a4ff-031f8620bcb7"
+key    = "pra-R000001-010126"
+kind   = "pra"
+schema_version = 1
+ref    = "R000001-010126"
+title  = "Example request"
+agency = "454c7a6f-fb21-5aff-95a7-6cc65fd22b78"
+portal = "govqa"
+tz     = "America/Los_Angeles"
+path   = "repo:assets/example-public-records/R000001-010126/"
+access = "repo"
+provenance = "release"
+retrieved = 2026-01-02
+
+[[messages]]
+n    = 1
+at   = "2026-01-01 09:00:00"
+from = "requester"
+kind = "request"
+id   = "940c09b8-bc36-56e8-96b0-11983eedd4f7"
+in   = "R000001-010126_Message_History.pdf"
+
+[[files]]
+name     = "R000001-010126_Message_History.pdf"
+id       = "403f6f92-9680-5a35-bbe2-6d6628e8a880"
+sha256   = "b02de859b3a6efd0ae5bed950084eb9339702c6d29bbdc35219850c908b30f8f"
+path     = "repo:assets/example-public-records/R000001-010126/R000001-010126_Message_History.pdf"
+from     = "portal"
+captured = 2026-01-02
+
+[[files]]
+name     = "export.xlsx"
+id       = "816117e4-f2f1-5356-ba1d-643de75b0f2b"
+sha256   = "d1c13bf93cc945d7bd9e98af5616f3997e0c47fca20d0d612d9ee2f428f33376"
+path     = "repo:assets/example-public-records/R000001-010126/export.xlsx"
+from     = "agency"
+produced = 2026-01-02
+message  = 1

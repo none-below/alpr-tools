@@ -1,0 +1,11 @@
+schema_version = 1
+[[person]]
+id   = "fe8e8cf6-6fb9-5555-808c-f894ff8bc393"
+slug = "jane-example"
+name = "Jane Example"
+  [[person.roles]]
+  agency = "454c7a6f-fb21-5aff-95a7-6cc65fd22b78"
+  title  = "Records Specialist"
+  basis  = { source = "403f6f92-9680-5a35-bbe2-6d6628e8a880", locator = "message(1)", note = "signature block" }
+[aliases]
+EX = "454c7a6f-fb21-5aff-95a7-6cc65fd22b78"

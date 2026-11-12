@@ -1,0 +1,6 @@
+schema_version = 1
+note = "a hand note"
+
+[[files]]
+sha256 = "d1c13bf93cc945d7bd9e98af5616f3997e0c47fca20d0d612d9ee2f428f33376"
+note   = "one sheet, ten rows"

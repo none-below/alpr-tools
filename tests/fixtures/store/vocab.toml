@@ -1,0 +1,55 @@
+# Every enumeration the lint checks, in one hand-edited file (README → Vocabularies; review 2026-11-01, B18).
+# The README's tables are the readable copy; the lint warns when they disagree. Add a value here first.
+schema_version = 1
+
+[fact]
+kind   = ["event", "span", "measurement", "statement", "rule"]
+status = ["draft", "verified", "observed", "retracted"]
+
+[hold]
+source = ["third-party-consent", "gj-only", "do-not-link"]   # never pii, never not-cleared, never de-redacted (rule 7; decisions of 2026-11-01 and 2026-11-11)
+fact   = ["swing-first", "embargo", "combination"]
+audiences = ["internal", "gj", "public"]
+
+[node]
+from       = ["agency", "portal", "requester", "sender", "us"]
+access     = ["public", "repo", "local"]
+provenance = ["release", "host", "capture", "sent", "observation", "leak"]   # leak: stored, linked, analyzed; a name known only from it never prints publicly
+schemes    = ["repo", "private", "nas", "s3", "ia", "pra", "file"]   # for `path` and `also`; `file:` never renders outside internal
+
+[root]
+kind = ["pra", "muckrock", "packet", "page", "snapshot", "article", "email", "sent", "survey", "statute", "notes", "recording"]
+status_state = ["opened", "closed", "extension", "cycle", "removed", "unreachable", "altered"]
+
+[message]
+kind = ["request", "ack", "response", "cycle", "clarification", "extension", "closure", "appeal"]
+
+[variant]
+aid     = ["ocr", "transcript", "captions", "extract", "ingest", "dom"]
+citable = ["curated", "redacted", "de-redacted"]
+later   = ["frames", "scene", "summary", "translation"]   # no consumer in any phase yet (review C, M21)
+
+[locator]
+kind = ["file", "sheet", "page", "pages", "printed", "line", "row", "rows", "cell", "section", "subdivision", "time", "field", "item", "message"]
+
+[observation]
+saw   = ["present", "absent", "created", "deleted"]
+basis = ["snapshot", "snapshot (manual transcription)", "event-log", "letter", "live"]
+
+[verification]
+how_verified = ["rendered", "native", "audio", "query"]
+how_finding  = ["sidecar", "transcript", "db"]
+
+[mark]
+kind = ["name", "dob", "address", "phone", "email", "a-number", "withheld-name"]   # withheld-name: a public employee's name an agency withheld on a stated ground; no audiences
+token_kinds = ["name"]   # `token = true` is allowed on these only
+
+[stamp]
+method = ["rfc3161", "ots"]
+
+[party]
+role = ["subject", "sharer", "recipient", "searcher", "searched", "vendor", "customer", "oversight", "jurisdiction", "requester", "speaker"]
+
+[topics]   # copied from the README's Topics table 2026-11-11; this file is now what the lint reads
+topic  = ["topic:audit", "topic:budget", "topic:contract", "topic:council", "topic:devices", "topic:law", "topic:misuse", "topic:people-search", "topic:pra-conduct", "topic:resharing", "topic:retention", "topic:search-reason", "topic:sharing", "topic:sharing-federal", "topic:sharing-immigration", "topic:sharing-private", "topic:training", "topic:transparency"]
+vendor = ["vendor:axon", "vendor:flock", "vendor:fusus", "vendor:vigilant"]

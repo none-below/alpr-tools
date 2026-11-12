@@ -1,0 +1,11 @@
+name: lint-prototype
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -I tests/check_toml.py tests/fixtures/store/README.md tests/fixtures/store
+      - run: python -I tests/check_store.py tests/fixtures/store

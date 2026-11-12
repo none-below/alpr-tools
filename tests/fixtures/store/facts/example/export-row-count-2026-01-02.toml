@@ -1,0 +1,19 @@
+id     = "example/export-row-count-2026-01-02"
+schema_version = 1
+kind   = "event"
+status = "verified"
+title  = "The example export lists ten rows"
+date   = 2026-01-02
+topics  = ["topic:audit"]
+parties = [ { id = "454c7a6f-fb21-5aff-95a7-6cc65fd22b78", name = "Example PD", role = "subject" } ]
+in = ["export"]
+fact = "The sheet has ten data rows."
+
+[sources.export]
+source  = "816117e4-f2f1-5356-ba1d-643de75b0f2b"
+root    = "7b035a75-ceb9-536e-a4ff-031f8620bcb7"
+locator = "sheet(Sheet1), rows(1-10)"
+
+[verification]
+on  = 2026-01-02
+how = { export = "native: the sheet opened and the ten rows counted" }
