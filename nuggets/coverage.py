@@ -30,9 +30,11 @@ from .config import Config
 
 FLOCK_TS = r"(\d{1,2}/\d{1,2}/\d{4}, \d{1,2}:\d{2}:\d{2} [AP]M)"
 TABLES = {
-    # table: (time expression, id column)
-    "truth.flock_audit_rows": (f"try_strptime(regexp_extract(\"Search Time\", '{FLOCK_TS}', 1), '%m/%d/%Y, %I:%M:%S %p')", '"ID"'),
-    "truth.smpd_pdf_rows": (f"try_strptime(regexp_extract(count_time_line, '{FLOCK_TS}', 1), '%m/%d/%Y, %I:%M:%S %p')", "id"),
+    # table: (time expression, id column, release-id filter: which releases live in this table)
+    "truth.flock_audit_rows": (f"try_strptime(regexp_extract(\"Search Time\", '{FLOCK_TS}', 1), '%m/%d/%Y, %I:%M:%S %p')", '"ID"',
+                               "release_id NOT LIKE 'smpd:%'"),
+    "truth.smpd_pdf_rows": (f"try_strptime(regexp_extract(count_time_line, '{FLOCK_TS}', 1), '%m/%d/%Y, %I:%M:%S %p')", "id",
+                            "release_id LIKE 'smpd:%'"),
 }
 WINDOW_RE = re.compile(r"(\d{1,2})_(\d{1,2})_(\d{4})-(\d{1,2})_(\d{1,2})_(\d{4})")
 MONTHS = {m.lower(): i for i, m in enumerate(calendar.month_name) if m}
@@ -98,10 +100,13 @@ def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
         "FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event'", {"p": p}).fetchall()}
     per_release: list[tuple] = []   # (release_id, month, rows, ids, first, last, unparsed)
     per_month: dict[tuple, dict] = {}
-    for table, (texpr, idcol) in TABLES.items():
+    for table, (texpr, idcol, lives) in TABLES.items():
+        if not any(con.execute(f"SELECT 1 FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event' AND {lives} LIMIT 1",
+                               {"p": p}).fetchall()):
+            continue   # no release of this producer lives in this table: skip the scan
         try:
             rows = con.execute(f"""
-                WITH r AS (SELECT release_id FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event'),
+                WITH r AS (SELECT release_id FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event' AND {lives}),
                      x AS (SELECT release_id, {texpr} AS t, {idcol} AS id FROM {table} WHERE release_id IN (SELECT release_id FROM r))
                 SELECT release_id, strftime(date_trunc('month', t), '%Y-%m') AS month, count(*) AS rows,
                        count(DISTINCT id) AS ids, min(t) AS first, max(t) AS last,
@@ -114,7 +119,7 @@ def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
         per_release += rows
         # distinct ids across releases per (agency, audit, month): the undoubled count
         for aid, audit, month, ids, rows_n in con.execute(f"""
-                WITH r AS (SELECT release_id, producer_agency_id, audit FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event'),
+                WITH r AS (SELECT release_id, producer_agency_id, audit FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event' AND {lives}),
                      x AS (SELECT release_id, {texpr} AS t, {idcol} AS id FROM {table} WHERE release_id IN (SELECT release_id FROM r))
                 SELECT r.producer_agency_id, r.audit, strftime(date_trunc('month', t), '%Y-%m') AS month,
                        count(DISTINCT id) AS ids, count(*) AS rows
