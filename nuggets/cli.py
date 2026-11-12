@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("coverage", help="which agency's logs are held for which months, from the audit DB")
     p.add_argument("--producer", help="SQL LIKE pattern on releases.producer (default: every producer)")
+    p.add_argument("--tz", default="America/Los_Angeles", help="the agency's zone; months are local months")
 
     p = sub.add_parser("verify", help="resolve every locator of a fact against its file and record what was looked at")
     p.add_argument("fact")
@@ -70,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         return add_pra_folder(cfg, a.folder, agency=a.agency, portal=a.portal, dry_run=a.dry_run)
     if a.cmd == "coverage":
         from .coverage import build_coverage
-        return build_coverage(cfg, a.producer)
+        return build_coverage(cfg, a.producer, tz=a.tz)
     if a.cmd == "releases" and a.rcmd == "twins":
         from .releases import twins
         return twins(cfg, a.producer, table=a.table)

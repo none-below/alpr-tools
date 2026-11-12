@@ -29,6 +29,15 @@ from pathlib import Path
 from .config import Config
 
 FLOCK_TS = r"(\d{1,2}/\d{1,2}/\d{4}, \d{1,2}:\d{2}:\d{2} [AP]M)"
+DEFAULT_TZ = "America/Los_Angeles"   # months are the agency's local months: Flock prints UTC, and a May 31 evening
+                                     # search sits on June 1 UTC, which would make every monthly file "overlap" the next
+
+
+def local_month(texpr: str, tz: str) -> str:
+    """SQL for the YYYY-MM of a UTC instant expression in the agency's zone (DuckDB's ICU timezone())."""
+    return f"strftime(date_trunc('month', timezone('{tz}', timezone('UTC', {texpr}))), '%Y-%m')"
+
+
 TABLES = {
     # table: (time expression, id column, release-id filter: which releases live in this table)
     "truth.flock_audit_rows": (f"try_strptime(regexp_extract(\"Search Time\", '{FLOCK_TS}', 1), '%m/%d/%Y, %I:%M:%S %p')", '"ID"',
@@ -84,7 +93,15 @@ def _month_span_mark(month: str, first: datetime | None, last: datetime | None, 
     return "partial"
 
 
-def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
+def _local(dt: datetime | None, tz: str) -> datetime | None:
+    """A UTC instant from the row tables as the agency's local time (naive), for the span marks."""
+    if dt is None:
+        return None
+    from zoneinfo import ZoneInfo
+    return dt.replace(tzinfo=timezone.utc).astimezone(ZoneInfo(tz)).replace(tzinfo=None)
+
+
+def build_coverage(cfg: Config, producer_like: str | None = None, tz: str = DEFAULT_TZ) -> int:
     try:
         from .auditdb import connect, loader_code, state_id
         con = connect(cfg)
@@ -108,7 +125,7 @@ def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
             rows = con.execute(f"""
                 WITH r AS (SELECT release_id FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event' AND {lives}),
                      x AS (SELECT release_id, {texpr} AS t, {idcol} AS id FROM {table} WHERE release_id IN (SELECT release_id FROM r))
-                SELECT release_id, strftime(date_trunc('month', t), '%Y-%m') AS month, count(*) AS rows,
+                SELECT release_id, {local_month('t', tz)} AS month, count(*) AS rows,
                        count(DISTINCT id) AS ids, min(t) AS first, max(t) AS last,
                        count(*) FILTER (WHERE t IS NULL) AS unparsed
                 FROM x GROUP BY ALL""", {"p": p}).fetchall()
@@ -121,7 +138,7 @@ def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
         for aid, audit, month, ids, rows_n in con.execute(f"""
                 WITH r AS (SELECT release_id, producer_agency_id, audit FROM truth.releases WHERE producer ILIKE $p AND audit <> 'event' AND {lives}),
                      x AS (SELECT release_id, {texpr} AS t, {idcol} AS id FROM {table} WHERE release_id IN (SELECT release_id FROM r))
-                SELECT r.producer_agency_id, r.audit, strftime(date_trunc('month', t), '%Y-%m') AS month,
+                SELECT r.producer_agency_id, r.audit, {local_month('t', tz)} AS month,
                        count(DISTINCT id) AS ids, count(*) AS rows
                 FROM x JOIN r USING (release_id) WHERE t IS NOT NULL GROUP BY ALL""", {"p": p}).fetchall():
             d = per_month.setdefault((aid, audit, month), {"ids": 0, "rows": 0})
@@ -140,6 +157,7 @@ def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
         if month is None:
             cells[(aid, audit, "unparsed")]["unparsed"] += unparsed
             continue
+        first, last = _local(first, tz), _local(last, tz)
         c = cells[(aid, audit, month)]
         c["releases"].append(rid)
         c["rows"] += rows_n
@@ -169,10 +187,11 @@ def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
     ran = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with (out_dir / "coverage.releases.csv").open("w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["release_id", "producer", "audit", "month", "rows", "distinct_ids", "first_utc", "last_utc", "unparsed_rows", "claims"])
+        w.writerow(["release_id", "producer", "audit", "month_local", "rows", "distinct_ids", "first_local", "last_local", "unparsed_rows", "claims"])
         for rid, month, rows_n, ids, first, last, unparsed in sorted(per_release, key=lambda x: (x[0], x[1] or "")):
             r = rel[rid]
-            w.writerow([rid, r[1], r[3], month or "", rows_n, ids, first or "", last or "", unparsed, ";".join(claimed_months(r[4], r[5], r[6], r[7]))])
+            w.writerow([rid, r[1], r[3], month or "", rows_n, ids, _local(first, tz) or "", _local(last, tz) or "", unparsed,
+                        ";".join(claimed_months(r[4], r[5], r[6], r[7]))])
     table_rows = []
     for (aid, audit, month), c in sorted(cells.items()):
         if month == "unparsed":
@@ -183,13 +202,13 @@ def build_coverage(cfg: Config, producer_like: str | None = None) -> int:
         table_rows.append({"agency_id": aid, "producer": names.get(aid, aid), "audit": audit, "month": month, "mark": mark,
                            "releases": len(c["releases"]), "release_ids": ";".join(c["releases"]), "claimed_by": ";".join(c["claimed_by"]),
                            "rows": c["rows"], "distinct_ids": pm["ids"] or "", "dup_rows": "" if dup is None else dup,
-                           "first_utc": c["first"] or "", "last_utc": c["last"] or ""})
+                           "first_local": c["first"] or "", "last_local": c["last"] or ""})
     with (out_dir / "coverage.csv").open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(table_rows[0].keys()) if table_rows else ["agency_id"])
         w.writeheader()
         w.writerows(table_rows)
     # the grid
-    lines = [f"# Coverage — {ran}", "", f"pin: code = {code}; state = {state}; producer filter = {p!r}", "",
+    lines = [f"# Coverage — {ran}", "", f"pin: code = {code}; state = {state}; producer filter = {p!r}; months in {tz}", "",
              "marks: F full · p partial · 0 claimed but no rows · . hole · +n overlapping releases; dup = rows beyond distinct IDs (blank where the log has no ID column)", ""]
     series: dict[tuple, list[dict]] = defaultdict(list)
     for t in table_rows:
@@ -233,7 +252,7 @@ def coverage_lines(cfg: Config, producer_like: str, audit: str | None, months: l
     holes = [m for m in want if m not in by_month or by_month[m]["mark"] == "hole"]
     if holes:
         out.append("holes: " + ", ".join(holes))
-    partial = [f"{m} ({by_month[m]['first_utc'][:10]}…{by_month[m]['last_utc'][:10]})" for m in want if by_month.get(m, {}).get("mark") == "partial"]
+    partial = [f"{m} ({by_month[m]['first_local'][:10]}…{by_month[m]['last_local'][:10]})" for m in want if by_month.get(m, {}).get("mark") == "partial"]
     if partial:
         out.append("partial: " + ", ".join(partial))
     over = [f"{m} ×{by_month[m]['releases']}" for m in want if m in by_month and int(by_month[m]["releases"]) > 1]
