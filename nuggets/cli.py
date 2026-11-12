@@ -32,6 +32,9 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--producer", required=True, help="SQL LIKE pattern on releases.producer, e.g. '%Los Altos%'")
     q.add_argument("--table", default="truth.flock_audit_rows")
 
+    p = sub.add_parser("coverage", help="which agency's logs are held for which months, from the audit DB")
+    p.add_argument("--producer", help="SQL LIKE pattern on releases.producer (default: every producer)")
+
     p = sub.add_parser("verify", help="resolve every locator of a fact against its file and record what was looked at")
     p.add_argument("fact")
     p.add_argument("--no-render", action="store_true", help="record structure only; skip page/row artifacts")
@@ -65,6 +68,9 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "sources" and a.scmd == "add":
         from .pra import add_pra_folder
         return add_pra_folder(cfg, a.folder, agency=a.agency, portal=a.portal, dry_run=a.dry_run)
+    if a.cmd == "coverage":
+        from .coverage import build_coverage
+        return build_coverage(cfg, a.producer)
     if a.cmd == "releases" and a.rcmd == "twins":
         from .releases import twins
         return twins(cfg, a.producer, table=a.table)

@@ -123,6 +123,24 @@ def run_query(cfg: Config, name: str, since: str | None = None, summary: bool = 
              f"since: {params['since']} (query window; the logs' own zone is UTC)",
              f"pin: code = {code}; state = {state}; query = {qrepo}/queries/{name}.toml@{_commit_of(qpath)}; runner = alpr-tools@{tools_commit}",
              f"accepted edge words for a bound start: {q.get('accept_start', [])}; a nominal: or draft edge never drives a count", ""]
+    cov = q.get("coverage")
+    if cov:
+        from .coverage import coverage_lines
+        months = []
+        with main_csv.open() as fh:
+            rd = csv.DictReader(fh)
+            col = cov.get("month_column", "month_utc")
+            months = sorted({r[col] for r in rd if r.get(col)}) if rd.fieldnames and col in rd.fieldnames else []
+        if months:   # the full span, holes included, not only the months with rows
+            y, m = int(months[0][:4]), int(months[0][5:])
+            span = []
+            while f"{y:04d}-{m:02d}" <= months[-1]:
+                span.append(f"{y:04d}-{m:02d}")
+                m += 1
+                if m > 12:
+                    y, m = y + 1, 1
+            months = span
+        lines += ["## Coverage of the window", ""] + coverage_lines(cfg, cov.get("producer_like", "%"), cov.get("audit"), months, state) + [""]
     lines += [f"## Result ({n_main} rows; {main_csv.name})", "", _md_table(main_csv)]
     for key, (p, n) in extra.items():
         lines += [f"## {key.removeprefix('sql_').capitalize()} ({n} rows; {p.name})", "", _md_table(p)]
