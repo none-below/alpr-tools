@@ -56,6 +56,17 @@ class Lint:
             "saw": set(v.get("observation", {}).get("saw", [])),
         }
 
+    def _verify_sidecar(self, fact_id: str) -> dict | None:
+        """The `verify` output for a fact, or None when it has not been run (or cannot be read)."""
+        import tomllib
+        p = _verify_sidecar_path(self.s, fact_id)
+        if not p.exists():
+            return None
+        try:
+            return tomllib.loads(p.read_text())
+        except tomllib.TOMLDecodeError:
+            return None
+
     def err(self, where, msg):
         self.out.append(Finding("error", where, msg))
 
@@ -346,10 +357,19 @@ class Lint:
                 for a in srcs:
                     if a not in how:
                         self.err(w, f"verified but how has no entry for alias {a}")
-            if "structure" not in ver:
-                self.warn(w, "verified without [verification].structure (run `verify`)")
-            if "artifacts" not in ver:
-                self.warn(w, "verified without [verification].artifacts (run `verify`)")
+            # `verify` writes structure and artifacts to _build/verify/<id>.toml; the fact may also carry its own copy
+            side = self._verify_sidecar(d.get("id", ""))
+            if side is None:
+                if "structure" not in ver:
+                    self.warn(w, "verified without [verification].structure (run `verify`)")
+                if "artifacts" not in ver:
+                    self.warn(w, "verified without [verification].artifacts (run `verify`)")
+            else:
+                probs = side.get("problems", [])
+                if probs:
+                    self.warn(w, f"`verify` reported {len(probs)} problem(s): {probs[0].get('text', '')}")
+                if not side.get("artifacts") and "artifacts" not in ver:
+                    self.warn(w, "`verify` rendered nothing for this fact (no page/row artifacts)")
             # whole-file claims need a whole-file locator
             text = (d.get("title", "") + " " + d.get("fact", "")).lower()
             if re.search(r"\b\d+ (pdf )?pages\b|\bin all\b|none in the production|\bnot in\b", text):
@@ -361,6 +381,10 @@ class Lint:
             eb = str(d.get("end_basis", ""))
             if eb.startswith("nominal:") and d.get("status") == "verified":
                 self.err(w, "a nominal: end on a verified fact needs how to cover the term clause (mark it ~ or set end = \"open\")")
+
+
+def _verify_sidecar_path(store: Store, fact_id: str):
+    return store.cfg.build_dir / "verify" / (fact_id.replace("/", "__") + ".toml")
 
 
 def _safe_terms(loc: str):

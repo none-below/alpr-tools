@@ -7,9 +7,10 @@ license = { text = "AGPL-3.0-or-later" }
 dependencies = []
 
 [project.optional-dependencies]
-db = ["duckdb>=1.1"]
+# the audit DB is written by duckdb 1.5.5 (its pinned env); attach it with the same minor version
+db = ["duckdb>=1.5.5,<1.6"]
 pdf = ["pymupdf>=1.24", "openpyxl>=3.1"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "duckdb>=1.5.5,<1.6"]
 
 [project.scripts]
 nuggets = "nuggets.cli:main"
