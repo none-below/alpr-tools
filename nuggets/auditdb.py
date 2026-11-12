@@ -9,15 +9,22 @@ raises ImportError when it is missing, and callers say so.
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 from .config import Config
 
 
+def truth_path(cfg: Config) -> Path:
+    """`$NUGGETS_TRUTH` when set (a candidate build such as truth_new.duckdb), else `<audit_db>/truth.duckdb`."""
+    env = os.environ.get("NUGGETS_TRUTH")
+    return Path(env).expanduser() if env else (cfg.audit_db or Path(".")) / "truth.duckdb"
+
+
 def connect(cfg: Config, facts_db: Path | None = None, threads: int = 4, memory_limit: str = "4GB"):
     import duckdb  # optional dependency
 
-    truth = (cfg.audit_db or Path(".")) / "truth.duckdb"
+    truth = truth_path(cfg)
     if not truth.exists():
         raise FileNotFoundError(f"no audit DB at {truth} (nuggets.toml audit_db)")
     con = duckdb.connect(config={"threads": threads, "memory_limit": memory_limit})

@@ -26,6 +26,12 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--portal", default="govqa")
     q.add_argument("--dry-run", action="store_true")
 
+    p = sub.add_parser("releases", help="audit-DB release checks")
+    rs = p.add_subparsers(dest="rcmd", required=True)
+    q = rs.add_parser("twins", help="find the same table loaded through two of our paths and compare the cells")
+    q.add_argument("--producer", required=True, help="SQL LIKE pattern on releases.producer, e.g. '%Los Altos%'")
+    q.add_argument("--table", default="truth.flock_audit_rows")
+
     p = sub.add_parser("verify", help="resolve every locator of a fact against its file and record what was looked at")
     p.add_argument("fact")
     p.add_argument("--no-render", action="store_true", help="record structure only; skip page/row artifacts")
@@ -59,6 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "sources" and a.scmd == "add":
         from .pra import add_pra_folder
         return add_pra_folder(cfg, a.folder, agency=a.agency, portal=a.portal, dry_run=a.dry_run)
+    if a.cmd == "releases" and a.rcmd == "twins":
+        from .releases import twins
+        return twins(cfg, a.producer, table=a.table)
     if a.cmd == "verify":
         from .verify import verify_fact
         return verify_fact(cfg, a.fact, render=not a.no_render)
