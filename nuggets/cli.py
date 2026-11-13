@@ -1,4 +1,4 @@
-"""`nuggets` command line. v1: lint, sources add, verify, grab, build, query. Each subcommand lives in its module;
+"""`nuggets` command line. v1: lint, sources add, releases twins, coverage, sharing, verify, grab, build, query. Each subcommand lives in its module;
 this file only parses arguments and sets the exit code."""
 
 from __future__ import annotations
@@ -36,6 +36,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--producer", help="SQL LIKE pattern on releases.producer (default: every producer)")
     p.add_argument("--tz", default="America/Los_Angeles", help="the agency's zone; months are local months")
 
+    p = sub.add_parser("sharing", help="an agency's portal sharing lists as spans per partner, from the site repo's snapshots")
+    p.add_argument("agency", help="registry agency id, slug, Flock org name, or an alias from parties.toml")
+    p.add_argument("--tz", default="America/Los_Angeles", help="the agency's zone: a capture is dated by its local day")
+
     p = sub.add_parser("verify", help="resolve every locator of a fact against its file and record what was looked at")
     p.add_argument("fact")
     p.add_argument("--no-render", action="store_true", help="record structure only; skip page/row artifacts")
@@ -51,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("name")
     p.add_argument("--since")
     p.add_argument("--summary", action="store_true")
+    p.add_argument("--param", action="append", default=[], metavar="K=V", help="override a [params] value for this run; the output stem carries it")
 
     a = ap.parse_args(argv)
     cfg = Config.load(a.store)
@@ -84,9 +89,18 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "build":
         from .build import build
         return build(cfg, audience=a.audience)
+    if a.cmd == "sharing":
+        from .sharing import build_sharing
+        return build_sharing(cfg, a.agency, tz=a.tz)
     if a.cmd == "query":
         from .query import run_query
-        return run_query(cfg, a.name, since=a.since, summary=a.summary)
+        overrides = {}
+        for kv in a.param:
+            k, sep, v = kv.partition("=")
+            if not sep or not k:
+                ap.error(f"--param wants K=V, got {kv!r}")
+            overrides[k] = v
+        return run_query(cfg, a.name, since=a.since, summary=a.summary, overrides=overrides)
     return 2
 
 
